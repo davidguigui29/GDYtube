@@ -517,7 +517,14 @@ ctk.set_default_color_theme("blue")
 # root.iconbitmap("/path/to/your_icon.ico")
 
 # iconphoto(): The iconphoto() method sets the title bar icon for a Tkinter window. You can use various image types, including .png.
-root.iconphoto(False, PhotoImage(file="app_data/favicon.png"))
+# Get the absolute path of the current script (main.py)
+script_path = os.path.abspath(__file__)
+
+# Construct the full path to the favicon.png file
+favicon_path = os.path.join(os.path.dirname(script_path), 'app_data', 'favicon.png')
+
+# print(f"Full path to favicon.png: {favicon_path}")
+root.iconphoto(False, PhotoImage(file=favicon_path))
 
 
 
