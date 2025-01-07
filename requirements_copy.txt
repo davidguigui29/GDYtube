@@ -1,0 +1,6 @@
+CTkListbox
+customtkinter
+python-dotenv
+python-youtube
+pytube
+requests

@@ -15,6 +15,15 @@ import os
 from dotenv import load_dotenv
 from tools.security import Security
 import logging
+from pytube.exceptions import PytubeError
+from urllib.error import HTTPError
+from urllib.parse import urlparse, parse_qs
+import yt_dlp
+import platform
+from pathlib import Path
+import PySimpleGUI as sg
+import time
+
 
 # Set up logging (optional)
 # logging.basicconfigure(level=logging.DEBUG)
@@ -86,9 +95,76 @@ def clear_entry():
     check_entry_content()
     select_all_checkbox.configure(state=DISABLED)
 
+
+import os
+import platform
+from pathlib import Path
+
+def get_download_folder():
+    # Get the current operating system
+    current_platform = platform.system()
+
+    # For Windows
+    if current_platform == "Windows":
+        # Windows typically stores downloads in the user's "Downloads" folder under the user directory
+        download_folder = Path(os.path.expanduser("~")) / "Downloads"
+    # For macOS
+    elif current_platform == "Darwin":  # macOS
+        # macOS also stores downloads under the user's home directory
+        download_folder = Path(os.path.expanduser("~")) / "Downloads"
+    # For Linux
+    elif current_platform == "Linux":
+        # Linux can vary, but commonly the "Downloads" folder is under the home directory
+        download_folder = Path(os.path.expanduser("~")) / "Downloads"
+    else:
+        raise ValueError("Unsupported platform")
+
+    # Return the download folder path
+    return download_folder
+
+
+
+
 def get_path():
+    
+    # Set the output path
+    path = ""
+    with open(output_dir, "r") as path_file:
+        path = path_file.readline().strip()
+        print(f"Output path: {path}")
+    
+    if path != "":
+        print(path)
+        list_box.configure(state=NORMAL)
+        select_all_checkbox.configure(state=NORMAL)
+
+    
+
     # Open a file dialog to select a directory
-    path = filedialog.askdirectory()
+    # default_dir = os.path.expanduser("~")
+    default_dir = get_download_folder()
+    # path = filedialog.askopenfilename(initialdir=default_dir, title="Select a file")
+    
+    # Filter out hidden files and folders (those starting with '.')
+    def filter_hidden_files_and_dirs(file_list):
+        return [f for f in file_list if not f.startswith('.')]
+
+    # Get the list of files and directories in the default directory
+    try:
+        entries = os.listdir(default_dir)
+        visible_entries = filter_hidden_files_and_dirs(entries)
+    except PermissionError:
+        visible_entries = []  # Handle permission errors (e.g., inaccessible directories)
+
+    # If needed, you could display or process `visible_entries` before opening the dialog.
+    print("Visible files and folders:", visible_entries)
+    
+    # Open the file dialog
+    path = filedialog.askdirectory(initialdir=default_dir, title="Select a file")
+    # home = str(Path.home())
+    # path = sg.popup_get_folder(message='Please choose datapath', title='Selection', initial_folder=home)
+
+  
     if path:
         # download_videos(path=path)
         print(f"Selected path: {path}")
@@ -99,15 +175,15 @@ def get_path():
         list_box.configure(state=NORMAL)
         select_all_checkbox.configure(state=NORMAL)
 
-
         return path
+        
     else:
         print("No path selected.")
         with open(output_dir, "r") as path:
             path = path.read().strip()
             print(path)
-            list_box.configure(state=DISABLED)
-            messagebox.showerror("Error", "no path")
+            list_box.configure(state=NORMAL)
+            # messagebox.showerror("Error", "no path")
             return None
 
 
@@ -225,20 +301,10 @@ def get_list_videos():
         
             list_box.insert(END, f" {str(index+1)}. {video_title}")
             
-
-    elif "youtu.be" in url_input_field.get():
-        video_id = url_input_field.get()[len("https://youtu.be/"):]
+    elif "youtube.com/watch" in url_input_field.get():
+        query_params = parse_qs(urlparse(url_input_field.get()).query)
+        video_id = query_params.get('v', [None])[0]
         
-        # Get the video and it title
-        video_item = api.get_video_by_id(video_id=video_id, return_json=True)
-        video_info =video_item["items"][0]["snippet"]
-        video_title =video_info["title"]
-        
-        print(video_id) 
-        list_box.insert(END, f"{video_title}")
-        
-    elif "youtube" in url_input_field.get() and "watch" in url_input_field.get():
-        video_id = url_input_field.get()[len("https://www.youtube.com/watch?v="):]
         # Get the video and it title
         print("yes",video_id) 
     
@@ -249,6 +315,24 @@ def get_list_videos():
         video_title =video_info["title"]
         
         list_box.insert(END, f"{video_title}")
+
+
+    elif "youtu.be" in url_input_field.get():
+        video_id = url_input_field.get().split('/')[-1].split('?')[0]  # Extract the part after the last '/' and before '?'
+        print(f"Video ID: {video_id}")
+        
+        # Get the video and it title
+        video_item = api.get_video_by_id(video_id=video_id, return_json=True)
+        video_info =video_item["items"][0]["snippet"]
+        video_title =video_info["title"]
+        
+        print(video_id) 
+        list_box.insert(END, f"{video_title}")
+    
+        
+        
+    # elif "youtube" in url_input_field.get() and "watch" in url_input_field.get():
+    #     video_id = url_input_field.get()[len("https://www.youtube.com/watch?v="):]
     
     else:
         not_supported_link = url_input_field.get()
@@ -257,15 +341,32 @@ def get_list_videos():
 
 
     # The list become clickable based on the state of the Choose path button
-    if get_path.cget("state") == "normal":
-        list_box.configure(state=NORMAL)
-        select_all_checkbox_var.set(0)
-        print("yes")
+    # if get_path.cget("state") == "normal":
+    #     list_box.configure(state=NORMAL)
+    #     select_all_checkbox_var.set(0)
+    #     print("yes")
+
     if get_path.cget("state") == "disabled":
-        select_all_checkbox_var.set(0)
-        checkbutton_state()
-        list_box.configure(state=DISABLED)
-        get_path.configure(state=NORMAL)
+        
+
+
+        # Set the output path
+        path = ""
+        with open(output_dir, "r") as path_file:
+            path = path_file.readline().strip()
+            print(f"Output path: {path}")
+        
+        if path != "":
+            print(path)
+            list_box.configure(state=NORMAL)
+            get_path.configure(state=NORMAL)
+            select_all_checkbox.configure(state=NORMAL)
+        else:
+
+            select_all_checkbox_var.set(0)
+            checkbutton_state()
+            list_box.configure(state=DISABLED)
+            get_path.configure(state=NORMAL)
             # Simulating the exception for demonstration purposes
             # raise pyyoutube.error.PyYouTubeException("YouTubeException(status_code=404,message=The playlist identified with the request's <code>url_input_field</code> parameter cannot be found.)")
     # except Exception as e:
@@ -302,204 +403,157 @@ def connection_checker():
             checkbutton_state()
             list_box.configure(state=NORMAL) 
 
+
+
+
 def download_videos():
-    
-    status_label.configure(text="About to start downloading!", text_color="white", fg_color="blue")
-    # resolution = resolution_var.get()
-    # print(resolution)
-
-    connection_checker()
-
-    download_start.configure(state="disabled") 
-    get_path.configure(state="disabled")
-    get_videos.configure(state="disabled") 
-
-        # Pack the labels and progress bar only when the download button is clicked
-
-
-    # Iterate through all selected videos 
-    # Counter variable to keep track of position number
-    # position = 1
-    for i in list_box.curselection():
-        video_id = ""
-        video_title = list_box.get(i)
-
-        if "youtu.be" in url_input_field.get():
-            video_id = url_input_field.get()[len("https://youtu.be/"):]
-        
-            print(video_id)
-
-        # if selected_option.get() == "Enter Playlist URL":
-            
-        # print(video)
-        # video_info =video_item["items"][0]["snippet"]
-    
-            
-        elif "youtube" in url_input_field.get() and "playlist" in url_input_field.get(): 
-            playlist_id = url_input_field.get()[len( 
-                "https://www.youtube.com/playlist?list="):]
-            # print(selected_option.get())
-            # Get list of video links 
-            # playlist_item_by_id = api.get_playlist_items(playlist_id=playlist_id, count=None, return_json=True) 
-            video_id = playlist_item_by_id['items'][i]['contentDetails']['videoId']
-            print(video_id) 
-            
-
-
-        elif "youtube" in url_input_field.get() and "watch" in url_input_field.get():
-            video_id = url_input_field.get()[len("https://www.youtube.com/watch?v="):]
-        
-            print(video_id)
-
-        else:
-            unsupported_link = url_input_field.get()
-
-
-
-            
-
-        link = f"https://www.youtube.com/watch?v={video_id}"
-        yt_obj = YouTube(link, on_progress_callback=on_progress)
-
-        # video_title = yt_obj.title  # Get the video title
-        stream = yt_obj.streams.get_highest_resolution()
-        # stream_url = stream.url
-
-        # # print(f"This is the url: {stream_url}")
-        # video_title = stream.title
-
-        # Handling Unwanted characters in title
-        video_title = Security().remove_characters(input_string=str(video_title).split(".")[0], characters=["/", "|", "\n", "#", "\\", "%"])[0]
-        filename = video_title + ".mp4"
-        print(video_title)
-        # str(video_title).split(".")[0]
-        
-
-        filters = yt_obj.streams.filter(progressive=True, file_extension='mp4') 
-
-        output_path = ""
-        # download the highest quality video 
-        with open(output_dir, "r") as path_file:
-            output_path = path_file.readline()
-            print(output_path)
-
-        existing_bytes = get_existing_bytes(output_path=filename)
-        # if existing_bytes_in_mb is not None:
-        #     print(f"Existing bytes: {existing_bytes}")
-        # else:
-        #     print("MB No partial download found.")
-
-        # if existing_bytes is not None:
-        #     print(f"Existing bytes: {existing_bytes}")
-        #     # filename_prefix = str(video_title).split(".")[0] + ". "
-        #     connection_checker()
-        #     status_label.configure(text="Downloading!", text_color="white", fg_color="blue")
-        #     resume_download(url=stream_url, filename=filename)
-        #     print("Download completed successfully!")
-        # elif existing_bytes is None:
-        #     print("No partial download found.")
-
-        
+    try:
+        status_label.configure(text="About to start downloading!", text_color="white", fg_color="blue")
         connection_checker()
-        status_label.configure(text="Downloading!", text_color="white", fg_color="blue")
 
-        
-        # filters.get_highest_resolution().download(output_path=output_path, filename=filename)
-        filters.get_highest_resolution().download(output_path=output_path)
-        # filters.get_by_resolution(resolution=resolution).download(output_path=output_path, filename_prefix=str(video_title).split(".")[0] + ". ")
+        # Disable buttons during download
+        download_start.configure(state="disabled")
+        get_path.configure(state="disabled")
+        get_videos.configure(state="disabled")
 
-        status_label.configure(text="Downloaded!", text_color="white", fg_color="green")
+        for i in list_box.curselection():
+            video_id = ""
+            video_title = list_box.get(i)
 
-        # Increment position counter
-        # position += 1
+            # Check if the input is a playlist or a single video
+            if "youtube" in url_input_field.get() and "playlist" in url_input_field.get():
+                # playlist_url = url_input_field.get()
+                # print(f"Downloading playlist: {playlist_url}")
+                # links_to_download = [playlist_url]
 
-    # messagebox.showinfo("Success", "Video Successfully downloaded") 
-    download_start.configure(state="normal") 
-    get_path.configure(state="normal")
-    get_videos.configure(state="normal") 
-
-def resume_download(url, filename):
-    """
-    Resumes a partially downloaded video from the given URL.
-
-    Args:
-        url (str): The YouTube video stream URL.
-        filename (str): The name of the file to save the downloaded content.
-
-    Returns:
-        None
-    """
-    try:
-        existing_bytes = get_existing_bytes(filename)  # Replace with your actual partial file name
-        headers = {'Range': f'bytes={existing_bytes}-'} if existing_bytes else {}
-        with requests.get(url, headers=headers, stream=True) as response:
-            response.raise_for_status()
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded_bytes = existing_bytes
-
-            # Extract the filename from the URL
-            # filename = os.path.basename(url)
-
-            with open(filename, 'ab') as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    f.write(chunk)
-                    downloaded_bytes += len(chunk)
-                    bytes_remaining = total_size - downloaded_bytes
-                    # print(f"Remaining bytes: {bytes_remaining} / {total_size} ({100 * downloaded_bytes / total_size:.2f}%)")
-                    bytes_downloaded = total_size - bytes_remaining
-                    percentage_completed = bytes_downloaded / total_size * 100
-                    percentage = int(percentage_completed)
-                    print(percentage)
-                    progress_label.configure(text=str(int(percentage_completed)) + "%")
-                    progress_label.update()
-                    progress_bar.set(float(percentage_completed / 100))
+                playlist_id = url_input_field.get()[len( 
+                "https://www.youtube.com/playlist?list="):]
+                # print(selected_option.get())
+                # Get list of video links 
+                # playlist_item_by_id = api.get_playlist_items(playlist_id=playlist_id, count=None, return_json=True) 
+                video_id = playlist_item_by_id['items'][i]['contentDetails']['videoId']
+                print(video_id) 
+                links_to_download = [f"https://www.youtube.com/watch?v={video_id}"]
+           
+           
+            
+            elif "youtube.com/watch" in url_input_field.get():
+                query_params = parse_qs(urlparse(url_input_field.get()).query)
+                video_id = query_params.get('v', [None])[0]
+                if video_id:
+                    print(f"Video ID: {video_id}")
+                else:
+                    print("No video ID found.")
+                links_to_download = [f"https://www.youtube.com/watch?v={video_id}"]
 
 
-        print(f"Download resumed successfully! Saved as {filename}")
+            # elif "youtube" in url_input_field.get() and "watch" in url_input_field.get():
+            #     video_id = url_input_field.get()[len("https://www.youtube.com/watch?v="):]
+            #     links_to_download = [f"https://www.youtube.com/watch?v={video_id}"]
+
+            elif "youtu.be" in url_input_field.get():
+                video_id = url_input_field.get().split('/')[-1].split('?')[0]  # Extract the part after the last '/' and before '?'
+                print(f"Video ID: {video_id}")
+                links_to_download = [f"https://www.youtube.com/watch?v={video_id}"]
+            else:
+                unsupported_link = url_input_field.get()
+                print(f"Unsupported link: {unsupported_link}")
+                continue  # Skip unsupported links
+
+            # Set the output path
+            output_path = ""
+            with open(output_dir, "r") as path_file:
+                output_path = path_file.readline().strip()
+                print(f"Output path: {output_path}")
+            
+
+
+            # yt-dlp configuration
+            ydl_opts = {
+                "format": "bestvideo+bestaudio/best",
+                "outtmpl": os.path.join(output_path, "%(title)s.%(ext)s"),  # Save as title.ext
+                "noplaylist": False,  # Allow playlists
+                "progress_hooks": [on_download_progress],  # Hook for showing progress
+                "quiet": False,
+                "no_warnings": True,
+            }
+
+            # # Download videos
+            # with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            #     try:
+            #         for link in links_to_download:
+            #             status_label.configure(text=f"Downloading: {link}", text_color="white", fg_color="blue")
+            #             ydl.download([link])
+            #             print(f"Downloaded: {link}")
+            #     except yt_dlp.utils.DownloadError as e:
+            #         print(f"Download error: {e}")
+
+            # Function to download a single link with retry logic
+            def download_with_retries(ydl, link, max_retries=3):
+                for attempt in range(max_retries):
+                    try:
+                        status_label.configure(text=f"Downloading: {link} (Attempt {attempt + 1}/{max_retries})",
+                                            text_color="white", fg_color="blue")
+                        ydl.download([link])
+                        print(f"Downloaded: {link}")
+                        return True  # Download successful
+                    except yt_dlp.utils.DownloadError as e:
+                        print(f"Download error on attempt {attempt + 1}: {e}")
+                        status_label.configure(text=f"Download error. Trying again...", text_color="white", fg_color="red")
+                        time.sleep(2)
+                        if attempt < max_retries - 1:
+                            time.sleep(1)  # Optional: Wait for 2 seconds before retrying
+                return False  # All attempts failed
+
+            # Download videos with retries
+            max_retries = 3
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                for link in links_to_download:
+                    success = download_with_retries(ydl, link)
+                    if not success:
+                        print(f"Failed to download after {max_retries} attempts: {link}")
+                        status_label.configure(text="Downloads Failed!", text_color="white", fg_color="red")
+                        time.sleep(2)
+                        print("Download Failed!")
+                    if success:
+                        # Re-enable buttons after the process
+                        download_start.configure(state="normal")
+                        get_path.configure(state="normal")
+                        get_videos.configure(state="normal")
+
+                        status_label.configure(text="All downloads completed!", text_color="white", fg_color="green")
+                        print("All downloads completed!")
+
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Unexpected error: {e}")
+        status_label.configure(text="Error occurred!", text_color="white", fg_color="red")
+        download_start.configure(state="normal")
+        get_path.configure(state="normal")
+        get_videos.configure(state="normal")
 
-def download_it(url):
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        total_size = int(r.headers.get('content-length', 0))
-        downloaded_bytes = 0
 
-        # Extract the filename from the URL
-        filename = os.path.basename(url)
-
-        with open(filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024):
-                f.write(chunk)
-                downloaded_bytes += len(chunk)
-                bytes_remaining = total_size - downloaded_bytes
-                # print(f"Remaining bytes: {bytes_remaining} / {total_size} ({100 * downloaded_bytes / total_size:.2f}%)")
-                bytes_downloaded = total_size - bytes_remaining
-                percentage_completed = bytes_downloaded / total_size * 100
-                percentage = int(percentage_completed)
-                print(percentage)
-
-def get_existing_bytes(output_path):
-    try:
-        # Open the partially downloaded file in binary mode
-        with open(output_path, "rb") as file:
-            # Get the file size (total bytes)
-            total_bytes = len(file.read())
-            return total_bytes
-    except FileNotFoundError:
-        # If the file doesn't exist (no partial download), return None
-        return None
 
 # call back function to update the progress
 
-def on_progress(stream, chunk, bytes_remaining):
-    total_size = stream.filesize
-    bytes_downloaded = total_size - bytes_remaining
-    percentage_completed = bytes_downloaded / total_size * 100
-    print(percentage_completed)
-    progress_label.configure(text=str(int(percentage_completed)) + "%")
-    progress_label.update()
-    progress_bar.set(float(percentage_completed / 100))
+
+def on_download_progress(d):
+    if d['status'] == 'downloading':
+        total_size = d.get('total_bytes', None) or d.get('total_bytes_estimate', None)
+        bytes_downloaded = d.get('downloaded_bytes', 0)
+
+        if total_size is not None:
+            percentage_completed = bytes_downloaded / total_size * 100
+            print(f"Progress: {percentage_completed:.2f}%")
+            progress_label.configure(text=f"{int(percentage_completed)}%")
+            progress_label.update()
+            progress_bar.set(float(percentage_completed / 100))
+        else:
+            print("Unable to determine total size.")
+    elif d['status'] == 'finished':
+        print("Download finished!")
+        progress_label.configure(text="100%")
+        progress_bar.set(1.0)
+
 
     
 # Create Object ( root window)
