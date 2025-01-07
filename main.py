@@ -103,28 +103,36 @@ def get_download_folder():
     # Get the current operating system
     current_platform = platform.system()
 
+    with open("path.txt", "w") as folder:
     # For Windows
-    if current_platform == "Windows":
-        # Windows typically stores downloads in the user's "Downloads" folder under the user directory
-        download_folder = Path(os.path.expanduser("~")) / "Downloads"
-    # For macOS
-    elif current_platform == "Darwin":  # macOS
-        # macOS also stores downloads under the user's home directory
-        download_folder = Path(os.path.expanduser("~")) / "Downloads"
-    # For Linux
-    elif current_platform == "Linux":
-        # Linux can vary, but commonly the "Downloads" folder is under the home directory
-        download_folder = Path(os.path.expanduser("~")) / "Downloads"
-    else:
-        raise ValueError("Unsupported platform")
+        if current_platform == "Windows":
+            # Windows typically stores downloads in the user's "Downloads" folder under the user directory
+            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
+            # folder.write(download_folder)
 
-    # Return the download folder path
-    return download_folder
+        # For macOS
+        elif current_platform == "Darwin":  # macOS
+            # macOS also stores downloads under the user's home directory
+            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
+            # folder.write(download_folder)
+
+        # For Linux
+        elif current_platform == "Linux":
+            # Linux can vary, but commonly the "Downloads" folder is under the home directory
+            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
+            # folder.write(download_folder)
+
+        else:
+            raise ValueError("Unsupported platform")
+        # download_folder = "/home/guidas/Documents"
+        # Return the download folder path
+        return download_folder
 
 
 
 
 def get_path():
+    default_dir = get_download_folder()
     
     # Set the output path
     path = ""
@@ -136,11 +144,11 @@ def get_path():
         print(path)
         list_box.configure(state=NORMAL)
         select_all_checkbox.configure(state=NORMAL)
+        # default_dir = path
 
     
 
     # Open a file dialog to select a directory
-    default_dir = get_download_folder()
     
     # Filter out hidden files and folders (those starting with '.')
     def filter_hidden_files_and_dirs(file_list):
@@ -174,13 +182,13 @@ def get_path():
         return path
 
     else:
-        print("No path selected.")
-        with open(output_dir, "r") as path:
-            path = path.read().strip()
+        print(f"No path selected. using the default {default_dir}")
+        with open(output_dir, "w") as output_path:
+            path = output_path.write(default_dir)
             print(path)
             list_box.configure(state=NORMAL)
             # messagebox.showerror("Error", "no path")
-            return None
+            return path
 
 
 
