@@ -21,7 +21,6 @@ from urllib.parse import urlparse, parse_qs
 import yt_dlp
 import platform
 from pathlib import Path
-import PySimpleGUI as sg
 import time
 
 
@@ -141,9 +140,7 @@ def get_path():
     
 
     # Open a file dialog to select a directory
-    # default_dir = os.path.expanduser("~")
     default_dir = get_download_folder()
-    # path = filedialog.askopenfilename(initialdir=default_dir, title="Select a file")
     
     # Filter out hidden files and folders (those starting with '.')
     def filter_hidden_files_and_dirs(file_list):
@@ -161,8 +158,7 @@ def get_path():
     
     # Open the file dialog
     path = filedialog.askdirectory(initialdir=default_dir, title="Select a file")
-    # home = str(Path.home())
-    # path = sg.popup_get_folder(message='Please choose datapath', title='Selection', initial_folder=home)
+   
 
   
     if path:
@@ -176,7 +172,7 @@ def get_path():
         select_all_checkbox.configure(state=NORMAL)
 
         return path
-        
+
     else:
         print("No path selected.")
         with open(output_dir, "r") as path:
@@ -288,7 +284,7 @@ def get_list_videos():
         playlist_id = url_input_field.get()[len( 
             "https://www.youtube.com/playlist?list="):]
         print(playlist_id) 
-        # print(selected_option.get())
+
         # Get list of video links 
         playlist_item_by_id = api.get_playlist_items( 
             playlist_id=playlist_id, count=None, return_json=True) 
@@ -330,9 +326,6 @@ def get_list_videos():
         list_box.insert(END, f"{video_title}")
     
         
-        
-    # elif "youtube" in url_input_field.get() and "watch" in url_input_field.get():
-    #     video_id = url_input_field.get()[len("https://www.youtube.com/watch?v="):]
     
     else:
         not_supported_link = url_input_field.get()
