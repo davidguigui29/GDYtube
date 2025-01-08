@@ -22,6 +22,7 @@ import yt_dlp
 import platform
 from pathlib import Path
 import time
+from tools.file_manager import Folders
 
 
 # Set up logging (optional)
@@ -30,6 +31,7 @@ import time
 load_dotenv(".env")
 
 output_dir = "path.txt"
+
 
 
 # Network errors, usually related to DHCP or wpa_supplicant (Wi-Fi).
@@ -95,57 +97,10 @@ def clear_entry():
     select_all_checkbox.configure(state=DISABLED)
 
 
-import os
-import platform
-from pathlib import Path
-
-def get_download_folder():
-    # Get the current operating system
-    current_platform = platform.system()
-
-    with open("path.txt", "w") as folder:
-    # For Windows
-        if current_platform == "Windows":
-            # Windows typically stores downloads in the user's "Downloads" folder under the user directory
-            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
-            # folder.write(download_folder)
-
-        # For macOS
-        elif current_platform == "Darwin":  # macOS
-            # macOS also stores downloads under the user's home directory
-            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
-            # folder.write(download_folder)
-
-        # For Linux
-        elif current_platform == "Linux":
-            # Linux can vary, but commonly the "Downloads" folder is under the home directory
-            download_folder = str(Path(os.path.expanduser("~")) / "Downloads")
-            # folder.write(download_folder)
-
-        else:
-            raise ValueError("Unsupported platform")
-        # download_folder = "/home/guidas/Documents"
-        # Return the download folder path
-        return download_folder
-
-
-
-
 def get_path():
-    default_dir = get_download_folder()
+    default_dir = Folders.get_download_folder()
     
-    # Set the output path
-    path = ""
-    with open(output_dir, "r") as path_file:
-        path = path_file.readline().strip()
-        print(f"Output path: {path}")
     
-    if path != "":
-        print(path)
-        list_box.configure(state=NORMAL)
-        select_all_checkbox.configure(state=NORMAL)
-        # default_dir = path
-
     
 
     # Open a file dialog to select a directory
@@ -162,10 +117,10 @@ def get_path():
         visible_entries = []  # Handle permission errors (e.g., inaccessible directories)
 
     # If needed, you could display or process `visible_entries` before opening the dialog.
-    print("Visible files and folders:", visible_entries)
+    # print("Visible files and folders:", visible_entries)
     
     # Open the file dialog
-    path = filedialog.askdirectory(initialdir=default_dir, title="Select a file")
+    path = filedialog.askdirectory(initialdir=default_dir, title="Select a Folder")
    
 
   
@@ -203,12 +158,16 @@ def paste_from_clipboard():
     clipboard_data = root.clipboard_get()
     url_input_field.insert(0, clipboard_data)
     check_entry_content()
+    get_list_videos()
     
 def check_selection(event):
     selected_indices = list_box.curselection()
 
     if len(selected_indices) == 0:
         print(f"{len(selected_indices)} item is selected")
+        # select_all_checkbox.configure(state=NORMAL)
+        select_all_checkbox_var.set(0)
+
 
     if selected_indices and len(selected_indices) == list_box.size():
         select_all_checkbox_var.set(1)
@@ -368,6 +327,9 @@ def get_list_videos():
             checkbutton_state()
             list_box.configure(state=DISABLED)
             get_path.configure(state=NORMAL)
+    
+        list_box.configure(state=NORMAL)
+        # select_all_checkbox.configure(state=NORMAL)
             # Simulating the exception for demonstration purposes
             # raise pyyoutube.error.PyYouTubeException("YouTubeException(status_code=404,message=The playlist identified with the request's <code>url_input_field</code> parameter cannot be found.)")
     # except Exception as e:
