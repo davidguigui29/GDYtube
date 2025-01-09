@@ -148,18 +148,23 @@ def get_path():
 
 
 
+
 def paste_from_clipboard():
-    # clear Input before pasting a new link
+    # Clear Input before pasting a new link
     clear_entry()
     status_label.configure(text="Thanks for using GDYtube!", text_color="white", fg_color="blue")
-    list_box.delete(0, 'end') 
-    
+    list_box.delete(0, 'end')
 
     clipboard_data = root.clipboard_get()
     url_input_field.insert(0, clipboard_data)
     check_entry_content()
-    get_list_videos()
-    
+
+    # Start get_list_videos in a new thread
+    Thread(target=get_list_videos, daemon=True).start()
+
+
+
+
 def check_selection(event):
     selected_indices = list_box.curselection()
 
