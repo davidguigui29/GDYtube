@@ -642,7 +642,8 @@ def on_download_progress(d):
         if total_size is not None:
             percentage_completed = bytes_downloaded / total_size * 100
             print(f"Progress: {percentage_completed:.2f}%")
-            progress_label.configure(text=f"{int(percentage_completed)}%")
+            # progress_label.configure(text=f"{int(percentage_completed)}%")
+            progress_label.configure(text=f"{percentage_completed:.1f}%")
             progress_label.update()
             progress_bar.set(float(percentage_completed / 100))
         else:
