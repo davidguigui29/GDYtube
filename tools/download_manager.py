@@ -2,8 +2,71 @@ from pytube import YouTube
 import os
 from tools.security import Security
 import requests
+import yt_dlp
 
 class Manager():
+
+
+    def get_video_ids_from_playlist(playlist_url):
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,  # Extract metadata without downloading
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(playlist_url, download=False)
+                if 'entries' in info:  # Check if it's a playlist
+                    video_ids = [entry['id'] for entry in info['entries']]  # Extract video IDs
+                    return video_ids
+                else:
+                    print("The provided URL is not a playlist.")
+                    return []
+        except Exception as e:
+            print(f"Error: {e}")
+            return []
+
+
+
+    def get_video_info(url):
+        """
+        Extracts video IDs from a YouTube playlist or single video URL.
+        
+        Args:
+            url (str): The YouTube URL (playlist or single video).
+            
+        Returns:
+            list: A list of video IDs if it's a playlist.
+            str: A single video ID if it's a single video.
+            None: If the URL is invalid or unsupported.
+        """
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,  # Extract metadata without downloading
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+
+                # Check if it's a playlist
+                if 'entries' in info:  # Playlist contains 'entries'
+                    video_ids = [entry['id'] for entry in info['entries']]  # Extract video IDs
+                    return video_ids, info
+
+                # If not a playlist, return single video ID
+                elif 'id' in info:  # Single video info contains 'id'
+                    return info['id'], info
+
+                # If not recognized as playlist or video
+                print("The provided URL is not a valid playlist or video.")
+                return None
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
+
     def download_video(self, youtube_object, url, output_path):
         try:
             yt = YouTube(url)

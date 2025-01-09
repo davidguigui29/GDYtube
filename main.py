@@ -5,6 +5,7 @@ from CTkListbox import *
 from tkinter import ttk
 from tkinter import *
 from pyyoutube import Api 
+from pyyoutube.error import PyYouTubeException
 from pytube import YouTube, Playlist
 from threading import Thread 
 from tkinter import messagebox
@@ -22,15 +23,52 @@ import yt_dlp
 import platform
 from pathlib import Path
 import time
-from tools.file_manager import Folders
+from tools.file_manager import Folders, Files
+from tools.download_manager import Manager
+
+
 
 
 # Set up logging (optional)
 # logging.basicconfigure(level=logging.DEBUG)
 
+Files.ensure_env_file_exists(env_sample_file=".env.sample")
+
 load_dotenv(".env")
 
 output_dir = "path.txt"
+
+
+# Download videos with retries
+max_retries = 10
+
+
+def get_youtube_api():
+    """
+    Initializes the YouTube API object using an API key from environment variables.
+
+    Returns:
+        Api: The initialized YouTube API object if successful.
+        None: If the API key is missing or invalid.
+    """
+    api_key = os.environ.get("API_KEY")
+
+    if not api_key:
+        print("No API key found. Skipping API initialization.")
+        return None
+
+    try:
+        api = Api(api_key=api_key)
+        print("API initialized successfully.")
+        return api
+    except PyYouTubeException as e:
+        print(f"Error initializing API: {e}")
+        return None
+
+
+# Create API Object 
+# api = Api(api_key=os.environ.get("API_KEY")) 
+api = get_youtube_api()
 
 
 
@@ -226,124 +264,206 @@ def straight_download(url=None):
     for video_url in playlist.video_urls:
         print(video_url)
 
-# straight_download()
-def get_list_videos(): 
-    status_label.configure(text="Getting your video or videos", text_color="white", fg_color="blue")
-    # progress_bar.pack()
+if api:
+    print("Api")
+    def get_list_videos(): 
+        status_label.configure(text="Getting your video or videos", text_color="white", fg_color="blue")
+        # progress_bar.pack()
 
-    list_box.delete(0, 'end') 
+        list_box.delete(0, 'end') 
 
-    # Call the function to check internet connection
-    while check_internet() == False:
-        print("No internet connection.")
-        messagebox.showerror("Error", "Check your connection\nAnd click OK to continue")
-        check_internet()
-    else:
-        print("Internet connection is available.")
-        if get_path.cget("state") == "disabled":
-            select_all_checkbox_var.set(0)
-            checkbutton_state()
-            list_box.configure(state=NORMAL)
-            
-
-    global playlist_item_by_id 
-    # Create API Object 
-    api = Api(api_key=os.environ.get("API_KEY")) 
-    # try:       
-            
-
-    if "youtube" in url_input_field.get() and "playlist" in url_input_field.get(): 
-        playlist_id = url_input_field.get()[len( 
-            "https://www.youtube.com/playlist?list="):]
-        print(playlist_id) 
-
-        # Get list of video links 
-        playlist_item_by_id = api.get_playlist_items( 
-            playlist_id=playlist_id, count=None, return_json=True) 
-        
-
-        # Iterate through all video links and insert into listbox
-        for index, videoid in enumerate(playlist_item_by_id['items']):
-            video_id = videoid['contentDetails']['videoId']
-            video_title = videoid['snippet']['title']
-        
-            list_box.insert(END, f" {str(index+1)}. {video_title}")
-            
-    elif "youtube.com/watch" in url_input_field.get():
-        query_params = parse_qs(urlparse(url_input_field.get()).query)
-        video_id = query_params.get('v', [None])[0]
-        
-        # Get the video and it title
-        print("yes",video_id) 
-    
-        video_item = api.get_video_by_id(video_id=video_id, return_json=True)
-        # print(video)
-
-        video_info =video_item["items"][0]["snippet"]
-        video_title =video_info["title"]
-        
-        list_box.insert(END, f"{video_title}")
-
-
-    elif "youtu.be" in url_input_field.get():
-        video_id = url_input_field.get().split('/')[-1].split('?')[0]  # Extract the part after the last '/' and before '?'
-        print(f"Video ID: {video_id}")
-        
-        # Get the video and it title
-        video_item = api.get_video_by_id(video_id=video_id, return_json=True)
-        video_info =video_item["items"][0]["snippet"]
-        video_title =video_info["title"]
-        
-        print(video_id) 
-        list_box.insert(END, f"{video_title}")
-    
-        
-    
-    else:
-        not_supported_link = url_input_field.get()
-        list_box.insert(END, not_supported_link)
-        status_label.configure(text="URL not supported", text_color="white", fg_color="red")
-
-
-    # The list become clickable based on the state of the Choose path button
-    # if get_path.cget("state") == "normal":
-    #     list_box.configure(state=NORMAL)
-    #     select_all_checkbox_var.set(0)
-    #     print("yes")
-
-    if get_path.cget("state") == "disabled":
-        
-
-
-        # Set the output path
-        path = ""
-        with open(output_dir, "r") as path_file:
-            path = path_file.readline().strip()
-            print(f"Output path: {path}")
-        
-        if path != "":
-            print(path)
-            list_box.configure(state=NORMAL)
-            get_path.configure(state=NORMAL)
-            select_all_checkbox.configure(state=NORMAL)
+        # Call the function to check internet connection
+        while check_internet() == False:
+            print("No internet connection.")
+            messagebox.showerror("Error", "Check your connection\nAnd click OK to continue")
+            check_internet()
         else:
+            print("Internet connection is available.")
+            if get_path.cget("state") == "disabled":
+                select_all_checkbox_var.set(0)
+                checkbutton_state()
+                list_box.configure(state=NORMAL)
+                
 
-            select_all_checkbox_var.set(0)
-            checkbutton_state()
-            list_box.configure(state=DISABLED)
-            get_path.configure(state=NORMAL)
-    
-        list_box.configure(state=NORMAL)
-        # select_all_checkbox.configure(state=NORMAL)
-            # Simulating the exception for demonstration purposes
-            # raise pyyoutube.error.PyYouTubeException("YouTubeException(status_code=404,message=The playlist identified with the request's <code>url_input_field</code> parameter cannot be found.)")
-    # except Exception as e:
-        # #     # Handle the exception
-    # #     error_message = str(e)  # Get the error message from the exception
-    #     # print(e.with_traceback())
-    #     print("No connection")
-    #     messagebox.showerror("Error", f"An error occurred:\nVideo cannot be found with that link\nCheck your link")
-        # messagebox.showerror("Error", f"An error occurred:\n{error_message}")
+        global playlist_item_by_id 
+
+
+        # try:       
+                
+
+        if "youtube" in url_input_field.get() and "playlist" in url_input_field.get(): 
+            playlist_id = url_input_field.get()[len( 
+                "https://www.youtube.com/playlist?list="):]
+            print(playlist_id) 
+
+            # Get list of video links 
+            playlist_item_by_id = api.get_playlist_items( 
+                playlist_id=playlist_id, count=None, return_json=True) 
+            
+
+            # Iterate through all video links and insert into listbox
+            for index, videoid in enumerate(playlist_item_by_id['items']):
+                video_id = videoid['contentDetails']['videoId']
+                video_title = videoid['snippet']['title']
+            
+                list_box.insert(END, f" {str(index+1)}. {video_title}")
+                
+        elif "youtube.com/watch" in url_input_field.get():
+            query_params = parse_qs(urlparse(url_input_field.get()).query)
+            video_id = query_params.get('v', [None])[0]
+            
+            # Get the video and it title
+            print("yes",video_id) 
+        
+            video_item = api.get_video_by_id(video_id=video_id, return_json=True)
+            # print(video)
+
+            video_info =video_item["items"][0]["snippet"]
+            video_title =video_info["title"]
+            
+            list_box.insert(END, f"{video_title}")
+
+
+        elif "youtu.be" in url_input_field.get():
+            video_id = url_input_field.get().split('/')[-1].split('?')[0]  # Extract the part after the last '/' and before '?'
+            print(f"Video ID: {video_id}")
+            
+            # Get the video and it title
+            video_item = api.get_video_by_id(video_id=video_id, return_json=True)
+            video_info =video_item["items"][0]["snippet"]
+            video_title =video_info["title"]
+            
+            print(video_id) 
+            list_box.insert(END, f"{video_title}")
+        
+            
+        
+        else:
+            not_supported_link = url_input_field.get()
+            list_box.insert(END, not_supported_link)
+            status_label.configure(text="URL not supported", text_color="white", fg_color="red")
+
+
+        # The list become clickable based on the state of the Choose path button
+        # if get_path.cget("state") == "normal":
+        #     list_box.configure(state=NORMAL)
+        #     select_all_checkbox_var.set(0)
+        #     print("yes")
+
+        if get_path.cget("state") == "disabled":
+            
+
+
+            # Set the output path
+            path = ""
+            with open(output_dir, "r") as path_file:
+                path = path_file.readline().strip()
+                print(f"Output path: {path}")
+            
+            if path != "":
+                print(path)
+                list_box.configure(state=NORMAL)
+                get_path.configure(state=NORMAL)
+                select_all_checkbox.configure(state=NORMAL)
+            else:
+
+                select_all_checkbox_var.set(0)
+                checkbutton_state()
+                list_box.configure(state=DISABLED)
+                get_path.configure(state=NORMAL)
+        
+            list_box.configure(state=NORMAL)
+            # select_all_checkbox.configure(state=NORMAL)
+                # Simulating the exception for demonstration purposes
+                # raise pyyoutube.error.PyYouTubeException("YouTubeException(status_code=404,message=The playlist identified with the request's <code>url_input_field</code> parameter cannot be found.)")
+        # except Exception as e:
+            # #     # Handle the exception
+        # #     error_message = str(e)  # Get the error message from the exception
+        #     # print(e.with_traceback())
+        #     print("No connection")
+        #     messagebox.showerror("Error", f"An error occurred:\nVideo cannot be found with that link\nCheck your link")
+            # messagebox.showerror("Error", f"An error occurred:\n{error_message}")
+
+elif not api:
+    print("no api")
+
+    def get_list_videos():
+        status_label.configure(text="Getting your video or videos", text_color="white", fg_color="blue")
+        # progress_bar.pack()
+
+        list_box.delete(0, 'end') 
+
+        # Call the function to check internet connection
+        while check_internet() == False:
+            print("No internet connection.")
+            messagebox.showerror("Error", "Check your connection\nAnd click OK to continue")
+            check_internet()
+        else:
+            print("Internet connection is available.")
+            if get_path.cget("state") == "disabled":
+                select_all_checkbox_var.set(0)
+                checkbutton_state()
+                list_box.configure(state=NORMAL)
+                
+
+        global video_info
+        global videos_ids
+        
+        
+
+        url = url_input_field.get()
+        video = Manager.get_video_info(url)
+        video_info = video[1]
+        videos_ids = video[0]
+        # print(video_info)
+        if not url:
+            list_box.insert(END, "No URL provided.")
+            return
+        
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True,
+            'extract_flat': True,
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = video_info
+                if 'entries' in info:  # Playlist or multi-video URL
+                    for index, entry in enumerate(info['entries']):
+                        video_title = entry.get('title', 'Unknown Title')
+                        list_box.insert(END, f" {index + 1}. {video_title}")
+                else:  # Single video
+                    video_title = info.get('title', 'Unknown Title')
+                    list_box.insert(END, video_title)
+        except Exception as e:
+            print(f"Error: {e}")
+            list_box.insert(END, "URL not supported or an error occurred.")
+            status_label.configure(text="URL not supported", text_color="white", fg_color="red")
+
+        if get_path.cget("state") == "disabled":
+            
+
+
+            # Set the output path
+            path = ""
+            with open(output_dir, "r") as path_file:
+                path = path_file.readline().strip()
+                print(f"Output path: {path}")
+            
+            if path != "":
+                print(path)
+                list_box.configure(state=NORMAL)
+                get_path.configure(state=NORMAL)
+                select_all_checkbox.configure(state=NORMAL)
+            else:
+
+                select_all_checkbox_var.set(0)
+                checkbutton_state()
+                list_box.configure(state=DISABLED)
+                get_path.configure(state=NORMAL)
+        
+            list_box.configure(state=NORMAL)
 
 
 def packer(progress_label, progress_bar, status_label):
@@ -394,12 +514,23 @@ def download_videos():
                 # print(f"Downloading playlist: {playlist_url}")
                 # links_to_download = [playlist_url]
 
-                playlist_id = url_input_field.get()[len( 
-                "https://www.youtube.com/playlist?list="):]
+                if api:
+                    playlist_id = url_input_field.get()[len("https://www.youtube.com/playlist?list="):]
                 # print(selected_option.get())
                 # Get list of video links 
                 # playlist_item_by_id = api.get_playlist_items(playlist_id=playlist_id, count=None, return_json=True) 
-                video_id = playlist_item_by_id['items'][i]['contentDetails']['videoId']
+                    video_id = playlist_item_by_id['items'][i]['contentDetails']['videoId']
+                else:
+                    playlist_url = url_input_field.get()
+                    
+                    video_ids = videos_ids
+                    # video_ids = Manager.get_video_ids_from_playlist(playlist_url)
+                    if i < len(video_ids):  # Ensure the selection is within bounds
+                        video_id = video_ids[i]
+                        print(f"Selected Video ID: {video_id}")
+                    else:
+                        print(f"Invalid selection index: {i}")
+
                 print(video_id) 
                 links_to_download = [f"https://www.youtube.com/watch?v={video_id}"]
            
@@ -474,10 +605,9 @@ def download_videos():
                 return False  # All attempts failed
 
             # Download videos with retries
-            max_retries = 3
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 for link in links_to_download:
-                    success = download_with_retries(ydl, link)
+                    success = download_with_retries(ydl, link, max_retries=max_retries)
                     if not success:
                         print(f"Failed to download after {max_retries} attempts: {link}")
                         status_label.configure(text="Downloads Failed!", text_color="white", fg_color="red")

@@ -4,3 +4,4 @@ python-dotenv
 python-youtube
 pytube
 requests
+yt-dlp
