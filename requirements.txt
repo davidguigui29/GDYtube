@@ -4,13 +4,17 @@ CTkListbox==1.4
 customtkinter==5.2.2
 darkdetect==0.8.0
 dataclasses-json==0.6.7
+fpdf==1.7.2
 idna==3.10
 isodate==0.7.2
+lxml==5.3.0
 marshmallow==3.24.0
 mypy-extensions==1.0.0
 oauthlib==3.2.2
 packaging==24.2
+pillow==11.1.0
 pyasn1==0.6.1
+python-docx==1.1.2
 python-dotenv==1.0.1
 python-youtube==0.9.7
 pytube==15.0.0
@@ -20,4 +24,4 @@ rsa==4.9
 typing-inspect==0.9.0
 typing_extensions==4.12.2
 urllib3==2.3.0
-yt-dlp==2024.12.23
+yt-dlp==2025.1.26
